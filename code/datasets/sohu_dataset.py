@@ -27,15 +27,15 @@ class InputFeature(object):
 
 
 class SohuDataset(Dataset):
-    def __init__(self, args, vocab_path, mode="train"):
+    def __init__(self, args, vocab_path, mode="train", model_name=None):
         self.max_len = args.max_seq_len
         self.vocab_path = vocab_path
         self.mode = mode
-        self.model_name = args.bert_model.split("/")[-1]
+        self.model_name = args.bert_model.split("/")[-1] if model_name is None else model_name
         self.reset()
 
     def reset(self):
-        if self.model_name == "wobert":
+        if self.model_name == "WoBERT":
             self.tokenizer = BertTokenizer(vocab_file=self.vocab_path, pre_tokenizer=lambda s: jieba.cut(s, HMM=False))
         else:
             self.tokenizer = BertTokenizer(vocab_file=self.vocab_path)
