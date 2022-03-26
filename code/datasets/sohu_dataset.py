@@ -68,7 +68,7 @@ class SohuDataset(Dataset):
                 ]
             elif self.mode == "test": # load the local test data (w/ label)
                 fs = [
-                    'datasets/%s/%s/onehalf_new_infer.txt' % (self.mode, var)
+                    'datasets/%s/%s/onehalf_new_test.txt' % (self.mode, var)
                 ]
             for f in fs:
                 with open(f) as f:
