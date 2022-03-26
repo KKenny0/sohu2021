@@ -92,7 +92,10 @@ class Trainer(object):
         input_cols = ['batch_input_ids', 'batch_segment_ids', 'batch_input_mask']
         model.eval()
         for _, batch in enumerate(data_loader):
-            labels = batch["batch_la_id"].to(device)
+            if infer:
+                labels = batch["batch_la_id"]
+            else:
+                labels = batch["batch_la_id"].to(device)
             conds = batch["batch_cond"].to(device)
             batch = tuple(batch[col].to(device) for col in input_cols)
 
@@ -108,7 +111,7 @@ class Trainer(object):
             eval_correct.append(labels)
         
         if infer:
-            return eval_pred, eval_correct
+            return eval_pred, eval_correct, eval_conds
 
         eval_f1_a, eval_f1_b, eval_f1 = metrics_calculator(eval_pred, eval_correct, eval_conds)
         return eval_f1_a, eval_f1_b, eval_f1
@@ -251,7 +254,7 @@ def test(args):
     model.to(args.device)
 
     vocab_path = os.path.join(args.saving_path, "vocab.txt")
-    testset = SohuDataset(args, vocab_path, mode='valid')
+    testset = SohuDataset(args, vocab_path, mode="valid")
     test_data_loader = BucketIterator(
                         data=testset,
                         batch_size=args.batch_size,
@@ -265,11 +268,6 @@ def test(args):
 # For predicting test data and generating submission file.
 # The official test data does not include labels.
 def infer(args):
-    logger.info(">"*100)
-    logger.info(args)
-    config = BertConfig.from_json_file(os.path.join(args.saving_path, "config.json"))
-    logger.info(config)
-
     model = SMN.from_pretrained(args.saving_path)
     model.to(args.device)
 
@@ -282,7 +280,7 @@ def infer(args):
                         shuffle=False,
                         sort=False,
                         mode="test")
-    test_logits, test_qid = Trainer._eval(model, test_data_loader, args.device, infer=True)
+    test_logits, test_qid, _ = Trainer._eval(model, test_data_loader, args.device, infer=True)
 
     data_id = []
     result = {}
@@ -309,8 +307,8 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--log", default="logs", type=str)
     parser.add_argument("--result_path", default="output/submission.csv", type=str)
-    parser.add_argument("--bert_model", default="models/robert", type=str)
-    parser.add_argument("--saving_path", default="output/ckpts_robert", type=str)
+    parser.add_argument("--bert_model", default="models/RoBERTa", type=str)
+    parser.add_argument("--saving_path", default="output/RoBERTa", type=str)
     parser.add_argument("--learning_rate", default="4e-5", type=float)
     parser.add_argument("--warmup_prop", default=0.05, type=float)
     parser.add_argument("--dropout", default=0.1, type=float)
@@ -351,7 +349,7 @@ def main():
         trainer.train()
     elif args.do_eval:
         test(args)
-    else:
+    elif args.do_infer:
         infer(args)
 
 
