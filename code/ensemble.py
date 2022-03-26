@@ -108,6 +108,7 @@ def infer(args):
         res1[qid] = logits1
         res2[qid] = logits2
         res3[qid] = logits3
+        
     final_pred = {}
     a_weights = [0.2100, 0.3400, 0.4500]
     b_weights = [0.2400, 0.0900, 0.6700]
@@ -118,7 +119,6 @@ def infer(args):
         for i, val in enumerate(vals):
             a_s += (a_weights[i]*val) / len(vals)
             b_s += (b_weights[i]*val) / len(vals)
-
         if "a" in qid:
             final_pred[qid] = a_s
         else:
@@ -127,7 +127,6 @@ def infer(args):
     with open(args.result_path, 'w', encoding='utf-8') as f:
         csv_writer = csv.writer(f)
         csv_writer.writerow(["id", "label"])
-
         for qid, ans in final_pred.items():
             ans = np.argmax(ans)
             csv_writer.writerow([qid, ans])  
