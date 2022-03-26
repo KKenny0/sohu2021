@@ -27,12 +27,7 @@ class InputFeature(object):
 
 
 class SohuDataset(Dataset):
-    def __init__(
-        self,
-        args,
-        vocab_path,
-        mode="train",
-    ):
+    def __init__(self, args, vocab_path, mode="train"):
         self.max_len = args.max_seq_len
         self.vocab_path = vocab_path
         self.mode = mode
