@@ -29,15 +29,14 @@ class InputFeature(object):
 class SohuDataset(Dataset):
     def __init__(
         self,
-        max_len,
+        args,
         vocab_path,
         mode="train",
-        model_name=None
     ):
-        self.max_len = max_len
+        self.max_len = args.max_seq_len
         self.vocab_path = vocab_path
         self.mode = mode
-        self.model_name = model_name
+        self.model_name = args.bert_model.split("/")[-1]
         self.reset()
 
     def reset(self):
@@ -72,7 +71,7 @@ class SohuDataset(Dataset):
                 fs = [
                     'datasets/%s/%s/valid.txt' % (self.mode, var)
                 ]
-            elif self.mode == "infer":
+            else:
                 fs = [
                     'datasets/%s/%s/onehalf_new_infer.txt' % (self.mode, var)
                 ]
