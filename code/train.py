@@ -254,7 +254,7 @@ def test(args):
     model.to(args.device)
 
     vocab_path = os.path.join(args.saving_path, "vocab.txt")
-    testset = SohuDataset(args, vocab_path, mode="valid")
+    testset = SohuDataset(args, vocab_path, mode="test")
     test_data_loader = BucketIterator(
                         data=testset,
                         batch_size=args.batch_size,
@@ -272,7 +272,7 @@ def infer(args):
     model.to(args.device)
 
     vocab_path = os.path.join(args.saving_path, "vocab.txt")
-    testset = SohuDataset(args, vocab_path, mode="test")
+    testset = SohuDataset(args, vocab_path, mode="infer")
     test_data_loader = BucketIterator(
                         data=testset,
                         batch_size=args.batch_size,

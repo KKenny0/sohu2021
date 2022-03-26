@@ -66,7 +66,7 @@ class SohuDataset(Dataset):
                 fs = [
                     'datasets/%s/%s/valid.txt' % (self.mode, var)
                 ]
-            else:
+            elif self.mode == "test": # load the local test data (w/ label)
                 fs = [
                     'datasets/%s/%s/onehalf_new_infer.txt' % (self.mode, var)
                 ]
@@ -118,7 +118,7 @@ class SohuDataset(Dataset):
         return data_all
 
     def build_examples(self):
-        if self.mode != 'test':
+        if self.mode != 'infer':
             data_all = self.read_data()
             self.examples = []
             for idx, x in enumerate(data_all):
@@ -136,7 +136,7 @@ class SohuDataset(Dataset):
                     feat.input_mask,
                 )
                 self.examples.append(example)
-        else:
+        else: # read the official test data
             data_all = self.read_test_data()
             self.examples = []
             for idx, x in enumerate(data_all):

@@ -42,19 +42,20 @@ def metrics_calculator(predictions, labels, conds):
     return f1_a, f1_b, f1
 
 
-def evaluate(args, model_type):
+def evaluate(args, model_type, mode):
     saving_path = os.path.join(args.save_path, model_type)
     model = SMN.from_pretrained(saving_path)
     model.to(args.device)
 
     vocab_path = os.path.join(saving_path, "vocab.txt")
-    testset = SohuDataset(args, vocab_path, mode="valid", model_name=model_type)
+    testset = SohuDataset(args, vocab_path, mode=mode, model_name=model_type)
     test_data_loader = BucketIterator(
                         data=testset,
                         batch_size=args.batch_size,
                         sort_key=lambda x: len(x[2]),
                         shuffle=False,
-                        sort=False)
+                        sort=False,
+                        mode=mode)
 
     test_logits, test_q_l, test_cond = Instructor._eval(model, test_data_loader, args.device, infer=True)
     test_logits = torch.cat(test_logits, dim=0).cpu().numpy()
@@ -67,9 +68,9 @@ def test(args):
     logger.info(">"*100)
     logger.info("Time: {}".format(strftime("%y%m%d-%H%M", localtime())))
 
-    test_logits_1, test_label_1, test_cond_1 = evaluate(args, MODEL_LIST[0])
-    test_logits_2, _, _ = evaluate(args, MODEL_LIST[1])
-    test_logits_3, _, _ = evaluate(args, MODEL_LIST[2])
+    test_logits_1, test_label_1, test_cond_1 = evaluate(args, MODEL_LIST[0], mode="test")
+    test_logits_2, _, _ = evaluate(args, MODEL_LIST[1], mode="test")
+    test_logits_3, _, _ = evaluate(args, MODEL_LIST[2], mode="test")
 
     a_mixpred = (0.2100*test_logits_1 + 0.3400*test_logits_2 + 0.4500*test_logits_3) / 3
     b_mixpred = (0.2400*test_logits_1 + 0.0900*test_logits_2 + 0.6700*test_logits_3) / 3
@@ -91,9 +92,9 @@ def test(args):
 
 
 def infer(args):
-    test_logits_1, test_qid_1, _ = evaluate(args, MODEL_LIST[0])
-    test_logits_2, _, _ = evaluate(args, MODEL_LIST[1])
-    test_logits_3, _, _ = evaluate(args, MODEL_LIST[2])
+    test_logits_1, test_qid_1, _ = evaluate(args, MODEL_LIST[0], mode="infer")
+    test_logits_2, _, _ = evaluate(args, MODEL_LIST[1], mode="infer")
+    test_logits_3, _, _ = evaluate(args, MODEL_LIST[2], mode="infer")
 
     fids = []
     res1, res2, res3 = {}, {}, {}
