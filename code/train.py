@@ -59,9 +59,6 @@ class Trainer(object):
             
         if self.args.do_adv:
             self.fgm = FGM(self.model, emb_name=self.args.adv_name, epsilon=self.args.adv_epsilon)
-
-        if self.args.fp16:
-            self.model = amp.initialize(self.model, opt_level="O2", verbosity=0)
             
     def summary(self):
         model_parameters = filter(
@@ -131,6 +128,8 @@ class Trainer(object):
             self.model.train()
             for step, batch in enumerate(train_loader):
                 global_step += 1
+                labels = batch["batch_la_id"].to(self.args.device)
+                conds = batch["batch_cond"].to(self.args.device)
                 train_batch = tuple(batch[col].to(self.args.device) for col in input_cols)
                 batch_size = train_batch[0].size(0)
                 inputs = {"input_ids_1": batch[0],
@@ -139,8 +138,6 @@ class Trainer(object):
                          "conds": conds}
                 logits, type_logits = self.model(**inputs)
 
-                labels = batch["batch_la_id"].to(self.args.device)
-                conds = batch["batch_cond"].to(self.args.device)
                 loss1 = criterion1(logits, labels)
                 loss2 = criterion2(type_logits, conds)
                 loss = loss1 + loss2
@@ -152,7 +149,7 @@ class Trainer(object):
                 loss_total += loss.item() * batch_size
 
                 if self.fp16:
-                    with amp.scale_loss(loss, self.optimizer) as scaled_loss:
+                    with amp.scale_loss(loss, optimizer) as scaled_loss:
                         scaled_loss.backward()
                 else:
                     loss.backward()
@@ -164,7 +161,7 @@ class Trainer(object):
                     loss_adv2 = criterion2(adv_type_logits, conds)
                     loss_adv = loss_adv1 + loss_adv2
                     if self.fp16:
-                        with amp.scale_loss(loss_adv, self.optimizer) as scaled_loss:
+                        with amp.scale_loss(loss_adv, optimizer) as scaled_loss:
                             scaled_loss.backward()
                     else:
                         loss_adv.backward()
@@ -240,6 +237,9 @@ class Trainer(object):
             int(len(train_loader) / self.args.gradient_accum / self.args.batch_size * self.args.num_epoch)
         )
         optimizer = BertAdam(param_opt, lr=self.args.learning_rate, warmup=self.args.warmup_prop, t_total=num_train_opt_steps)
+
+        if self.args.fp16:
+            self.model, optimizer = amp.initialize(self.model, optimizer, opt_level="O2", verbosity=0)
 
         self._train(criterion1, criterion2, train_loader, val_loader, optimizer)
 
