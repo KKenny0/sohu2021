@@ -87,7 +87,8 @@ class Trainer(object):
         torch.save(args, output_args_file)
         subprocess.run(['cp', self.vocab_path, os.path.join(args.saving_path, 'vocab.txt')])
 
-    def _eval(self, model, data_loader, device, infer=False):
+    @staticmethod
+    def _eval(model, data_loader, device, infer=False):
         eval_pred, eval_conds, eval_correct = [], [], []
 
         input_cols = ['batch_input_ids', 'batch_segment_ids', 'batch_input_mask']
@@ -105,7 +106,7 @@ class Trainer(object):
                           "token_type_ids_1": eval_batch[1],
                           "attention_mask_1": eval_batch[2],
                           "conds": conds}       
-                logits, _ = self.model(**inputs)
+                logits, _ = model(**inputs)
 
             eval_pred.append(logits)
             eval_conds.append(conds)
@@ -187,7 +188,7 @@ class Trainer(object):
 
             if self.ema is not None:
                 self.ema.apply_shadow()
-            val_f1_a, val_f1_b, val_f1 = self._eval(self.model, val_loader, device=self.args.device)
+            val_f1_a, val_f1_b, val_f1 = Trainer._eval(self.model, val_loader, device=self.args.device)
             if self.ema is not None:
                 self.ema.restore()
             logger.info(">> Epoch {} eval results -> val_f1_a: {:.4f}, val_f1_b: {:.4f}, val_f1: {:.4f}".format(epoch, val_f1_a, val_f1_b, val_f1))
@@ -286,7 +287,7 @@ def infer(args):
                         sort_key=lambda x: len(x[2]),
                         shuffle=False,
                         sort=False,
-                        mode="test")
+                        mode="infer")
     test_logits, test_qid, _ = Trainer._eval(model, test_data_loader, args.device, infer=True)
 
     data_id = []
