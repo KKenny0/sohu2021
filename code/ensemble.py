@@ -150,7 +150,7 @@ def main():
     args = get_args()
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    log_file = '{}/log-ensemble'.format(args.log)
+    log_file = '{}/log-ensemble.log'.format(args.log)
     logger.addHandler(logging.FileHandler(log_file))
 
     if args.do_eval:
