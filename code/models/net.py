@@ -35,7 +35,7 @@ class AttentionClassifier(nn.Module):
 
 class SMNet(BertPreTrainedModel):
     def __init__(self, config):
-        super(SMNet, self).__init__()
+        super(SMNet, self).__init__(config)
         self.domain1_encoder = BertModel(config)
 
         self.proj = nn.Linear(config.hidden_size, 3*config.hidden_size)
