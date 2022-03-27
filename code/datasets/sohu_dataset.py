@@ -137,7 +137,7 @@ class SohuDataset(Dataset):
                 break       
 
         tokens_s, tokens_t = sequences[0], sequences[1]
-        tokens = ["[CLS]"] + cond_token + ["[<S>]"] + tokens_s + ["[</S>]"] + ["[<T>]"] + tokens_t + ["[</T>"]
+        tokens = ["[CLS]"] + cond_token + ["[<S>]"] + tokens_s + ["[</S>]"] + ["[<T>]"] + tokens_t + ["[</T>]"]
         segment_ids = [0] * (len(cond_token) + len(tokens_s) + 3) + [1] * (len(tokens_t) + 2)
         input_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         input_mask = [1] * len(input_ids)     

@@ -2,6 +2,7 @@
 # coding: utf-8
 import logging
 import argparse
+import warnings
 import os
 import sys
 import csv
@@ -27,6 +28,7 @@ from utils.utils import (
     seed_everything, 
     metrics_calculator)
 
+warnings.filterwarnings("ignore")
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -38,7 +40,7 @@ logger.addHandler(logging.StreamHandler(sys.stdout))
 class Trainer(object):
     def __init__(self, args):
         self.args = args
-        logger.info("Hyper Parameters")
+        logger.info(">> Hyper Parameters:")
         logger.info(args)
 
         config = BertConfig.from_json_file(os.path.join(args.bert_model, "config.json"))
@@ -54,9 +56,11 @@ class Trainer(object):
     def _reset(self):
         self.model = self.model.to(self.args.device)
         
+        self.ema = None
         if self.args.do_ema:
             self.ema = EMA(self.model, 0.9999)
-            
+        
+        self.fgm = None
         if self.args.do_adv:
             self.fgm = FGM(self.model, emb_name=self.args.adv_name, epsilon=self.args.adv_epsilon)
             
@@ -65,7 +69,7 @@ class Trainer(object):
             lambda p: p.requires_grad, self.model.parameters()
         )
         params = sum([np.prod(p.size()) for p in model_parameters])
-        self.logger.info(
+        logger.info(
             "trainable parameters: {:4}M".format(params / 1000 / 1000)
         )
         #logger.info(self.model)
@@ -120,9 +124,9 @@ class Trainer(object):
 
         results = {}
         input_cols = ['batch_input_ids', 'batch_segment_ids', 'batch_input_mask']
-        for epoch in range(self.args.num_epochs):
+        for epoch in range(self.args.num_epoch):
             logger.info("-" * 100)
-            logger.info("Epoch {} precess: ".format(epoch))
+            logger.info("Epoch {} process: ".format(epoch))
             n_total, loss_total = 0, 0
             train_pred, train_conds, train_correct = [], [], []
             self.model.train()
@@ -148,7 +152,7 @@ class Trainer(object):
                 n_total += batch_size
                 loss_total += loss.item() * batch_size
 
-                if self.fp16:
+                if self.args.fp16:
                     with amp.scale_loss(loss, optimizer) as scaled_loss:
                         scaled_loss.backward()
                 else:
@@ -160,16 +164,17 @@ class Trainer(object):
                     loss_adv1 = criterion1(adv_obj, labels)
                     loss_adv2 = criterion2(adv_type_logits, conds)
                     loss_adv = loss_adv1 + loss_adv2
-                    if self.fp16:
+                    if self.args.fp16:
                         with amp.scale_loss(loss_adv, optimizer) as scaled_loss:
                             scaled_loss.backward()
                     else:
                         loss_adv.backward()
                     self.fgm.restore()
 
-                if (step+1) % self.gradient_accum == 0:
+                if (step+1) % self.args.gradient_accum == 0:
                     optimizer.step()
-                    self.ema.update()
+                    if self.ema is not None:
+                        self.ema.update()
                     optimizer.zero_grad()
 
                 train_pred.append(logits)
@@ -180,9 +185,11 @@ class Trainer(object):
                     _, _, train_f1 = metrics_calculator(train_pred, train_correct, train_conds)
                     logger.info("   epoch-step: {}-{}, loss: {:.4f}, train f1: {:.4f}".format(epoch, global_step, train_loss, train_f1))
 
-            self.ema.apply_shadow()
+            if self.ema is not None:
+                self.ema.apply_shadow()
             val_f1_a, val_f1_b, val_f1 = self._eval(self.model, val_loader, device=self.args.device)
-            self.ema.restore()
+            if self.ema is not None:
+                self.ema.restore()
             logger.info(">> Epoch {} eval results -> val_f1_a: {:.4f}, val_f1_b: {:.4f}, val_f1: {:.4f}".format(epoch, val_f1_a, val_f1_b, val_f1))
             results["epoch{}_val_f1_a".format(epoch)] = val_f1_a
             results["epoch{}_val_f1_b".format(epoch)] = val_f1_b
@@ -340,7 +347,7 @@ def main():
     if not os.path.exists(args.log):
         os.makedirs(args.log)
 
-    log_file = '{}/log-{}-{}'.format(args.log, args.bert_model.split("/")[-1], strftime("%y%m%d-%H%M", localtime()))
+    log_file = '{}/log-{}-{}.log'.format(args.log, args.bert_model.split("/")[-1], strftime("%y%m%d-%H%M", localtime()))
     logger.addHandler(logging.FileHandler(log_file))
 
     if args.do_train:

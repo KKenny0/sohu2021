@@ -50,11 +50,12 @@ class SMNet(BertPreTrainedModel):
         conds: torch.Tensor = None,
     ):
 
-        seq, _ = self.domain1_encoder(
+        seq, _ = self.bert(
                     input_ids=input_ids_1, 
                     token_type_ids=token_type_ids_1,
                     attention_mask=attention_mask_1,
-                    output_all_encoded_layers=True)
+                    output_all_encoded_layers=True
+                )
         seq_sum = torch.cat(
                     (
                         seq[-1],
