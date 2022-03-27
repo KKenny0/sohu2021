@@ -94,12 +94,12 @@ class Trainer(object):
             else:
                 labels = batch["batch_la_id"].to(device)
             conds = batch["batch_cond"].to(device)
-            batch = tuple(batch[col].to(device) for col in input_cols)
+            eval_batch = tuple(batch[col].to(device) for col in input_cols)
 
             with torch.no_grad():
-                inputs = {"input_ids_1": batch[0],
-                          "token_type_ids_1": batch[1],
-                          "attention_mask_1": batch[2],
+                inputs = {"input_ids_1": eval_batch[0],
+                          "token_type_ids_1": eval_batch[1],
+                          "attention_mask_1": eval_batch[2],
                           "conds": conds}       
                 logits, _ = self.model(**inputs)
 
@@ -132,9 +132,9 @@ class Trainer(object):
                 conds = batch["batch_cond"].to(self.args.device)
                 train_batch = tuple(batch[col].to(self.args.device) for col in input_cols)
                 batch_size = train_batch[0].size(0)
-                inputs = {"input_ids_1": batch[0],
-                         "token_type_ids_1": batch[1],
-                         "attention_mask_1": batch[2],
+                inputs = {"input_ids_1": train_batch[0],
+                         "token_type_ids_1": train_batch[1],
+                         "attention_mask_1": train_batch[2],
                          "conds": conds}
                 logits, type_logits = self.model(**inputs)
 
