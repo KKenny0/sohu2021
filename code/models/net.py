@@ -36,7 +36,7 @@ class AttentionClassifier(nn.Module):
 class SMNet(BertPreTrainedModel):
     def __init__(self, config):
         super(SMNet, self).__init__(config)
-        self.domain1_encoder = BertModel(config)
+        self.bert = BertModel(config)
 
         self.proj = nn.Linear(config.hidden_size, 3*config.hidden_size)
         self.task_clf = nn.ModuleList([AttentionClassifier(3*config.hidden_size, config.num_labels) for i in range(2)])
