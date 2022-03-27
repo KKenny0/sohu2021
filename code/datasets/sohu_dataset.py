@@ -6,46 +6,32 @@ import numpy as np
 
 from torchKbert.tokenization import BertTokenizer
 from torch.utils.data import Dataset
+
 import jieba
 jieba.initialize()
 
 
-class InputFeature(object):
-    """A single set of features of data."""
-
-    def __init__(self, input_ids, segment_ids, input_mask):
-        self.input_ids = input_ids
-        self.segment_ids = segment_ids
-        self.input_mask = input_mask
-
-    def __str__(self):
-        return str(
-            f"input_ids: {self.input_ids}\n"
-            f"segment_ids: {self.segment_ids}\n"
-            f"input_mask: {self.input_mask}"
-        )
-
-
 class SohuDataset(Dataset):
-    def __init__(
-        self,
-        max_len,
-        vocab_path,
-        mode="train",
-        model_name=None
-    ):
-        self.max_len = max_len
+    def __init__(self, args, vocab_path, mode="train", model_name=None):
+        self.max_len = args.max_seq_len
         self.vocab_path = vocab_path
         self.mode = mode
-        self.model_name = model_name
+        self.model_name = args.bert_model.split("/")[-1] if model_name is None else model_name
         self.reset()
 
     def reset(self):
-        if self.model_name == "wobert":
+        if self.model_name == "WoBERT":
             self.tokenizer = BertTokenizer(vocab_file=self.vocab_path, pre_tokenizer=lambda s: jieba.cut(s, HMM=False))
         else:
             self.tokenizer = BertTokenizer(vocab_file=self.vocab_path)
+        self.examples = []
         self.build_examples()
+
+    def __getitem__(self, index):
+        return self.examples[index]
+
+    def __len__(self):
+        return len(self.examples)
 
     def read_data(self):
         variants = [
@@ -72,9 +58,9 @@ class SohuDataset(Dataset):
                 fs = [
                     'datasets/%s/%s/valid.txt' % (self.mode, var)
                 ]
-            elif self.mode == "infer":
+            elif self.mode == "test": # load the local test data (w/ label)
                 fs = [
-                    'datasets/%s/%s/onehalf_new_infer.txt' % (self.mode, var)
+                    'datasets/%s/%s/onehalf_new_test.txt' % (self.mode, var)
                 ]
             for f in fs:
                 with open(f) as f:
@@ -123,46 +109,7 @@ class SohuDataset(Dataset):
             
         return data_all
 
-    def build_examples(self):
-        if self.mode != 'test':
-            data_all = self.read_data()
-            self.examples = []
-            for idx, x in enumerate(data_all):
-                cond = x['cond']
-                label = x['label']
-                source = x['source']
-                target = x['target']
-
-                feat = self.build_features(source, target, cond)
-                example = (
-                    label,
-                    cond, 
-                    feat.input_ids, 
-                    feat.segment_ids, 
-                    feat.input_mask,
-                )
-                self.examples.append(example)
-        else:
-            data_all = self.read_test_data()
-            self.examples = []
-            for idx, x in enumerate(data_all):
-                cond = x['cond']
-                source = x['source']
-                target = x['target']
-                q_id = x['id']
-                
-                feat = self.build_features(source, target, cond)
-                example = (
-                    q_id,
-                    cond,
-                    feat.input_ids,
-                    feat.segment_ids,
-                    feat.input_mask,
-                )
-                self.examples.append(example)
-
-
-    def build_features(self, source, target, cond):
+    def build_features(self, source, target, cond, label_or_id):
         cond_tokens = {
             0: ["[SSA]"],
             1: ["[SSB]"],
@@ -174,7 +121,6 @@ class SohuDataset(Dataset):
         cond_token = cond_tokens[cond]
 
         max_len = self.max_len-6
-
         if self.model_name != "wobert":
             tokens_s = self.tokenizer.tokenize(source, pre_tokenize=False)
             tokens_t = self.tokenizer.tokenize(target, pre_tokenize=False)
@@ -182,40 +128,38 @@ class SohuDataset(Dataset):
             tokens_s = self.tokenizer.tokenize(source)
             tokens_t = self.tokenizer.tokenize(target)
         sequences = [tokens_s, tokens_t]
-
         while True:
             lengths = [len(s) for s in sequences]
             if sum(lengths) > max_len:
                 i = np.argmax(lengths)
                 sequences[i].pop()
             else:
-                break        
+                break       
+
         tokens_s, tokens_t = sequences[0], sequences[1]
-
-        tokens = ["[CLS]"] + cond_token + ["[<S>]"] + tokens_s + ["[</S>]"]
-        segment_ids = [0] * len(tokens)
-
-        tokens_t = ["[<T>]"] + tokens_t + ["[</T>]"]
-        segment_ids += [1]*len(tokens_t)
-
-        tokens = tokens + tokens_t
+        tokens = ["[CLS]"] + cond_token + ["[<S>]"] + tokens_s + ["[</S>]"] + ["[<T>]"] + tokens_t + ["[</T>]"]
+        segment_ids = [0] * (len(cond_token) + len(tokens_s) + 3) + [1] * (len(tokens_t) + 2)
         input_ids = self.tokenizer.convert_tokens_to_ids(tokens)
         input_mask = [1] * len(input_ids)     
 
-        feature = InputFeature(
-            input_ids=input_ids,
-            segment_ids=segment_ids,
-            input_mask=input_mask,
+        return (
+            label_or_id,
+            cond,
+            input_ids,
+            segment_ids,
+            input_mask
         )
 
-        return feature
-
-    def _preprocess_op(self, index):
-        example = self.examples[index]
-        return example
-
-    def __getitem__(self, index):
-        return self._preprocess_op(index)
-
-    def __len__(self):
-        return len(self.examples)
+    def build_examples(self):
+        if self.mode != 'infer':
+            data_all = self.read_data()
+            for _, x in enumerate(data_all):
+                cond = x['cond']
+                label_or_id = x['label']
+                self.examples.append(self.build_features(x['source'], x['target'], cond, label_or_id))
+        else: # read the official test data
+            data_all = self.read_test_data()
+            for _, x in enumerate(data_all):
+                cond = x['cond']
+                label_or_id = x['id']
+                self.examples.append(self.build_features(x['source'], x['target'], cond, label_or_id))

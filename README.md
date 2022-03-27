@@ -50,7 +50,7 @@ A 文件匹配标准较为宽泛，两段文字是同一个话题便视为匹配
     | LLA | 长长匹配 A 类 |
     | LLB | 长长匹配 A 类 |
 
-- 使用`[<S>]、[</S>]`和`[<T>]、[</T>]`来分别区分 source 和 target。
+- 使用`[<S>]、[</S>]`和`[<T>]、[</T>]`来分别区分 source 和 target。(相应的 special tokens 已经添加到 models/* 下所给的 vocab.txt 文件中)
 
 #### 1.3.3 多任务学习
 为了更好地学习`Type Token`的表示，并辅助`Task-Attentive Classifier`的学习，我们提出了数据类型标签预测任务，即根据`Type Token`的表示来判断当前输入属于哪种任务类型。

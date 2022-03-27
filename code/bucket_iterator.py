@@ -53,7 +53,7 @@ class BucketIterator(object):
             batch_segment_ids.append(segment_ids)
             batch_input_mask.append(input_mask)
 
-        if self.mode != 'test':
+        if self.mode != 'infer':
             return { \
                     'batch_la_id': torch.tensor(batch_la_id), \
                     'batch_cond': torch.tensor(batch_cond), \

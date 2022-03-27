@@ -4,4 +4,4 @@ torch==1.7.1
 tqdm==4.31.1
 apex==0.9.10dev
 scikit_learn==0.24.2
-torchKbert==1.1
+torchKbert==1.1.3

@@ -5,7 +5,7 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchKbert.modeling import BertModel
+from torchKbert.modeling import BertModel, BertPreTrainedModel
 
 class Attention(nn.Module):
     def __init__(self, hidden_size: int):
@@ -33,14 +33,14 @@ class AttentionClassifier(nn.Module):
         out = self.fc(h)
         return out
 
-class SMNet(nn.Module):
+class SMNet(BertPreTrainedModel):
     def __init__(self, config):
-        super(SMNet, self).__init__()
-        self.domain1_encoder = BertModel.from_pretrained(config.DOMAIN1_MODEL_PATH)
+        super(SMNet, self).__init__(config)
+        self.bert = BertModel(config)
 
-        self.proj = nn.Linear(config.HIDDEN_SIZE, 3*config.HIDDEN_SIZE)
-        self.task_clf = nn.ModuleList([AttentionClassifier(3*config.HIDDEN_SIZE, 2) for i in range(2)])
-        self.type_clf = nn.Linear(config.HIDDEN_SIZE, 6)
+        self.proj = nn.Linear(config.hidden_size, 3*config.hidden_size)
+        self.task_clf = nn.ModuleList([AttentionClassifier(3*config.hidden_size, config.num_labels) for i in range(2)])
+        self.type_clf = nn.Linear(config.hidden_size, 6)
 
     def forward(
         self,
@@ -50,20 +50,18 @@ class SMNet(nn.Module):
         conds: torch.Tensor = None,
     ):
 
-        seq, _ = self.domain1_encoder(
-            input_ids=input_ids_1, 
-            token_type_ids=token_type_ids_1,
-            attention_mask=attention_mask_1,
-            output_all_encoded_layers=True
-        )
+        seq, _ = self.bert(
+                    input_ids=input_ids_1, 
+                    token_type_ids=token_type_ids_1,
+                    attention_mask=attention_mask_1,
+                    output_all_encoded_layers=True
+                )
         seq_sum = torch.cat(
-            (
-                seq[-1],
-                seq[-2],
-                seq[-3]
-            ),
-            dim=-1
-        )
+                    (
+                        seq[-1],
+                        seq[-2],
+                        seq[-3]
+                    ), dim=-1)
 
         type_embed = seq[-1][:,1,:]
         type_out = self.type_clf(type_embed)

@@ -4,19 +4,14 @@
 pip install -r requirements.txt
 ```
 
-### 2. 训练
+### 2. 训练&评估
 执行如下命令：
 ```shell
-python train.py
+sh run.sh
 ```
 
-### 3. 评估
+### 3. 模型融合
 执行如下命令：
 ```shell
-python eval.py
-```
-
-### 4. 预测
-```shell
-python test.py
+sh run_ensemble.sh
 ```

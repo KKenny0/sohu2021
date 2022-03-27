@@ -3,13 +3,10 @@
 
 import os
 import random
-
 import numpy as np
 import torch
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import f1_score
 
-from torch.nn.utils.rnn import pack_sequence
-from torch.utils.data import DataLoader
 
 def seed_everything(seed=2323):
     random.seed(seed)
@@ -53,3 +50,37 @@ class AverageMeter(object):
     def update(self, val, n=1):
         self.avg = (self.avg * self.count + val) / (self.count + 1)
         self.count += 1
+
+
+def metrics_calculator(predictions: list, labels: list, conds: list, mode: str="obj"):
+    assert(len(labels) == len(predictions))
+    y_pred = torch.cat(predictions, dim=0)
+    y_true = torch.cat(labels, dim=0)
+    conds = torch.cat(conds, dim=0)
+    
+    y_pred = y_pred.cpu().detach().numpy()
+    y_pred = y_pred.argmax(axis=1)
+    y_true = y_true.cpu().numpy()
+    
+    if mode != 'type':
+        total_a, right_a = 0., 0.
+        total_b, right_b = 0., 0.
+        for i, p in enumerate(y_pred):
+            t = y_true[i]
+            flag = int(conds[i] % 2)
+            
+            total_a += ((p + t) * (flag == 0))
+            right_a += ((p * t) * (flag == 0))
+            total_b += ((p + t) * (flag == 1))
+            right_b += ((p * t) * (flag == 1))
+
+        
+        f1_a = 2.0 * right_a / total_a
+        f1_b = 2.0 * right_b / total_b
+        f1 =  (f1_a + f1_b) / 2
+
+        return f1_a, f1_b, f1
+    else:
+        f1 = f1_score(y_true, y_pred, average="macro")
+        return f1
+
