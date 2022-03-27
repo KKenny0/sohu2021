@@ -321,7 +321,7 @@ def get_args():
     parser.add_argument("--seed", default=2323, type=int)
     parser.add_argument("--fp16", action="store_true", help="Whether to use 16-bit (mixed) precision (through NVIDIA apex) instead of 32-bit")
     parser.add_argument("--do_ema", action="store_true", help="Whether to use exponential moving average")
-    parser.add_argument("--do_adv", aciton="store_true", help="Whether to do adversarial training")
+    parser.add_argument("--do_adv", action="store_true", help="Whether to do adversarial training")
     parser.add_argument("--adv_epsilon", default=1.0, type=float, help="Epsilon for adversarial training")
     parser.add_argument("--adv_name", default="word_embeddings", type=str, help="Name for adversarial layer")
     parser.add_argument("--do_train", action="store_true", help="Whether to run training")
@@ -334,7 +334,7 @@ def get_args():
 
 def main():
     args = get_args()
-    seed_everything(args.SEED)
+    seed_everything(args.seed)
 
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if not os.path.exists(args.log):
